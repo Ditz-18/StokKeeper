@@ -2,7 +2,7 @@
   "name": "StockReq - Bagas Aditya",
   "short_name": "StockReq",
   "description": "Pencatatan Stok Kosong",
-  "start_url": "./stock-tracker.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f0f0f",
