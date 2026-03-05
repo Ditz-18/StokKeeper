@@ -1,0 +1,25 @@
+{
+  "name": "StockReq - Bagas Aditya",
+  "short_name": "StockReq",
+  "description": "Pencatatan Stok Kosong",
+  "start_url": "./stock-tracker.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "https://a.top4top.io/p_3716lgwwh0.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://a.top4top.io/p_3716lgwwh0.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

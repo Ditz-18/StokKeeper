@@ -2,8 +2,30 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockReq</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>StockReq - Bagas Aditya</title>
+
+<!-- PWA Meta -->
+<meta name="application-name" content="StockReq">
+<meta name="description" content="Pencatatan Stok Kosong">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StockReq">
+<meta name="msapplication-TileColor" content="#0f0f0f">
+<meta name="msapplication-TileImage" content="https://a.top4top.io/p_3716lgwwh0.png">
+
+<!-- Favicon & Icons -->
+<link rel="icon" type="image/png" href="https://a.top4top.io/p_3716lgwwh0.png">
+<link rel="shortcut icon" href="https://a.top4top.io/p_3716lgwwh0.png">
+<link rel="apple-touch-icon" href="https://a.top4top.io/p_3716lgwwh0.png">
+<link rel="apple-touch-icon" sizes="152x152" href="https://a.top4top.io/p_3716lgwwh0.png">
+<link rel="apple-touch-icon" sizes="180x180" href="https://a.top4top.io/p_3716lgwwh0.png">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="stock-tracker.css">
 <!-- ZXing via jsDelivr UMD build — exposes window.ZXing -->
@@ -659,6 +681,93 @@ document.addEventListener('DOMContentLoaded', () => {
 // HELPERS
 function eh(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function ea(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+
+<!-- PWA Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+
+// PWA Install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show install banner after 3 seconds if not standalone
+  if (!window.matchMedia('(display-mode: standalone)').matches) {
+    setTimeout(showInstallBanner, 3000);
+  }
+});
+
+function showInstallBanner() {
+  if (!deferredPrompt) return;
+  const banner = document.createElement('div');
+  banner.id = 'installBanner';
+  banner.innerHTML = `
+    <div style="
+      position:fixed;bottom:70px;left:12px;right:12px;
+      background:#1a1a1a;border:1px solid #e8ff00;border-radius:10px;
+      padding:12px 14px;display:flex;align-items:center;gap:12px;
+      z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.5);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:#f0f0f0;
+    ">
+      <img src="https://a.top4top.io/p_3716lgwwh0.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">Install StockReq</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">Tambahkan ke layar utama</div>
+      </div>
+      <button onclick="installApp()" style="
+        background:#e8ff00;color:#000;border:none;border-radius:6px;
+        padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;
+      ">Install</button>
+      <button onclick="document.getElementById('installBanner').remove()" style="
+        background:transparent;border:none;color:#555;cursor:pointer;
+        font-size:18px;padding:0 4px;line-height:1;flex-shrink:0;
+      ">&#x2715;</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+async function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.remove();
+  if (outcome === 'accepted') {
+    const t = document.getElementById('toast');
+    if (t) { t.className='toast success'; t.querySelector('i').className='fa-solid fa-circle-check'; document.getElementById('toastMsg').textContent='Aplikasi berhasil diinstall!'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+  }
+}
+
+// iOS install hint (Safari doesn't support beforeinstallprompt)
+const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone;
+if (isIos && !isStandalone) {
+  setTimeout(() => {
+    const banner = document.createElement('div');
+    banner.innerHTML = `
+      <div style="
+        position:fixed;bottom:70px;left:12px;right:12px;
+        background:#1a1a1a;border:1px solid #2e2e2e;border-radius:10px;
+        padding:12px 14px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.5);
+        font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:#888;
+        display:flex;align-items:flex-start;gap:10px;
+      ">
+        <i class="fa-solid fa-circle-info" style="color:#e8ff00;margin-top:1px;flex-shrink:0"></i>
+        <span>Untuk install: tekan <strong style="color:#f0f0f0">Bagikan</strong> lalu pilih <strong style="color:#f0f0f0">Tambahkan ke Layar Utama</strong></span>
+        <button onclick="this.closest('div').parentElement.remove()" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:16px;padding:0;margin-left:auto;flex-shrink:0">&#x2715;</button>
+      </div>`;
+    document.body.appendChild(banner);
+    setTimeout(() => { if (banner.parentElement) banner.remove(); }, 8000);
+  }, 4000);
+}
 </script>
 </body>
 </html>
