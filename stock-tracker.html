@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockReq</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="stock-tracker.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.19.1/zxing-browser.min.js"></script>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-icon"><i class="fa-solid fa-barcode"></i></div>
+    <div>
+      <div class="header-title">StockReq - Bagas Aditya</div>
+      <div class="header-sub">Pencatatan Stok Kosong</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="badge-taken" id="takenBadge" title="Sudah diambil">0 <i class="fa-solid fa-check"></i></span>
+    <span class="badge-count" id="totalBadge" title="Total item">0</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- FORM PANEL -->
+  <div class="panel-form" id="panelForm">
+
+    <div>
+      <div class="section-label">SKU / ODO Number <span style="color:var(--danger);font-size:12px">*</span></div>
+      <div class="scan-mode-tabs">
+        <button class="scan-tab active" id="tabHW" onclick="setMode('hw')">
+          <i class="fa-solid fa-keyboard"></i> Hardware / Ketik
+        </button>
+        <button class="scan-tab" id="tabCam" onclick="setMode('cam')">
+          <i class="fa-solid fa-camera"></i> Kamera
+        </button>
+      </div>
+
+      <!-- Hardware mode -->
+      <div id="modeHW">
+        <div class="scanner-box">
+          <div class="scanner-header">
+            <div class="scanner-status">
+              <div class="dot hw" id="hwDot"></div>
+              <span id="hwStatus">Siap scan</span>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="focusSku()">
+              <i class="fa-solid fa-crosshairs"></i> Fokus
+            </button>
+          </div>
+          <input type="text" id="skuInput" class="input-field"
+            placeholder="Scan atau ketik SKU / ODO Number..."
+            autocomplete="off" autocorrect="off" spellcheck="false">
+          <div style="margin-top:8px;font-size:11px;color:var(--text-muted);font-family:var(--mono)">
+            <i class="fa-solid fa-circle-info" style="margin-right:4px"></i>
+            Arahkan scanner ke field ini lalu scan barcode
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera mode -->
+      <div id="modeCam" style="display:none">
+        <div class="scanner-box" id="camBox">
+          <div class="scanner-header">
+            <div class="scanner-status">
+              <div class="dot" id="camDot"></div>
+              <span id="camStatus">Kamera tidak aktif</span>
+            </div>
+          </div>
+          <div class="cam-wrap" id="camWrap">
+            <div class="cam-viewport">
+              <video id="camVideo" autoplay muted playsinline></video>
+              <div class="scan-line"></div>
+              <div class="corners"><span></span></div>
+              <div class="cam-flash" id="camFlash"></div>
+            </div>
+            <select class="cam-select" id="camSelect" onchange="switchCam()"></select>
+          </div>
+          <div class="cam-controls">
+            <button class="btn btn-cam-on btn-sm" id="btnCamOn" onclick="startCam()">
+              <i class="fa-solid fa-video"></i> Aktifkan Kamera
+            </button>
+            <button class="btn btn-cam-off btn-sm" id="btnCamOff" onclick="stopCam()" style="display:none">
+              <i class="fa-solid fa-video-slash"></i> Hentikan
+            </button>
+          </div>
+          <div class="cam-result" id="camResult">
+            <div class="cam-result-label">TERBACA</div>
+            <div class="cam-result-val" id="camResultVal"></div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <input type="text" id="skuInputCam" class="input-field"
+            placeholder="SKU terbaca akan muncul di sini..."
+            autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+
+    <!-- Nama (opsional) -->
+    <div>
+      <div class="section-label">Nama Barang <span class="optional-tag">(opsional)</span></div>
+      <input type="text" id="nameInput" class="input-field" placeholder="Nama / deskripsi barang...">
+    </div>
+
+    <!-- Qty -->
+    <div>
+      <div class="section-label">Jumlah Diambil</div>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="chQty(-1)"><i class="fa-solid fa-minus"></i></button>
+        <input type="number" id="qtyInput" class="qty-input" value="1" min="1" max="9999">
+        <button class="qty-btn" onclick="chQty(1)"><i class="fa-solid fa-plus"></i></button>
+      </div>
+    </div>
+
+    <!-- Catatan -->
+    <div>
+      <div class="section-label">Catatan <span class="optional-tag">(opsional)</span></div>
+      <textarea id="noteInput" class="input-field" placeholder="Keterangan tambahan..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="addItem()">
+      <i class="fa-solid fa-circle-plus"></i> Tambah Ke Daftar
+    </button>
+  </div>
+
+  <!-- LIST PANEL -->
+  <div class="panel-list" id="panelList">
+    <div class="list-header">
+      <div class="list-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Cari SKU atau nama..." oninput="renderList()">
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" id="fAll"     onclick="setFilter('all')">Semua</button>
+        <button class="filter-tab f-pending" id="fPending" onclick="setFilter('pending')">
+          <i class="fa-solid fa-clock"></i> Belum
+        </button>
+        <button class="filter-tab f-taken" id="fTaken" onclick="setFilter('taken')">
+          <i class="fa-solid fa-check"></i> Diambil
+        </button>
+      </div>
+    </div>
+    <div class="list-body" id="listBody"></div>
+    <div class="list-footer">
+      <div class="footer-stats">
+        <div class="footer-stat">Total: <span id="statTotal">0</span></div>
+        <div class="footer-stat">Diambil: <span class="green" id="statTaken">0</span></div>
+        <div class="footer-stat">Belum: <span class="yellow" id="statPending">0</span></div>
+      </div>
+      <button class="btn btn-danger-ghost btn-sm" onclick="openResetModal()">
+        <i class="fa-solid fa-trash-can"></i> Reset Semua
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile nav -->
+<nav class="mobile-nav">
+  <button class="mobile-nav-btn active" id="navForm" onclick="switchTab('form')">
+    <i class="fa-solid fa-plus-circle"></i><span>Input</span>
+  </button>
+  <button class="mobile-nav-btn" id="navList" onclick="switchTab('list')">
+    <i class="fa-solid fa-list-ul"></i><span>Daftar</span>
+  </button>
+</nav>
+
+<!-- Reset modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <div class="modal-title">
+      <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);margin-right:8px"></i>Reset Semua Data
+    </div>
+    <div class="modal-desc">Semua data permintaan stok akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('resetModal')">Batal</button>
+      <button class="btn-danger" onclick="resetAll()"><i class="fa-solid fa-trash-can"></i> Hapus Semua</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-title">
+      <i class="fa-solid fa-circle-xmark" style="color:var(--danger);margin-right:8px"></i>Hapus Item
+    </div>
+    <div class="modal-desc" id="deleteDesc">Yakin ingin menghapus item ini?</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Batal</button>
+      <button class="btn-danger" onclick="confirmDelete()"><i class="fa-solid fa-trash"></i> Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <i class="fa-solid fa-circle-check"></i>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// DATA
+const SK = 'stockreq_v3';
+let items = [], delTarget = null, mode = 'hw', filter = 'all';
+
+function load() { try { items = JSON.parse(localStorage.getItem(SK)) || []; } catch { items = []; } }
+function save() { localStorage.setItem(SK, JSON.stringify(items)); }
+
+// MODE
+function setMode(m) {
+  mode = m;
+  document.getElementById('tabHW').classList.toggle('active', m === 'hw');
+  document.getElementById('tabCam').classList.toggle('active', m === 'cam');
+  document.getElementById('modeHW').style.display  = m === 'hw'  ? '' : 'none';
+  document.getElementById('modeCam').style.display = m === 'cam' ? '' : 'none';
+  if (m === 'hw') { stopCam(); setTimeout(focusSku, 100); }
+}
+
+function focusSku() {
+  const el = document.getElementById('skuInput');
+  if (el && document.getElementById('modeHW').style.display !== 'none') { el.focus(); el.select(); }
+}
+
+function getSkuVal() {
+  return mode === 'hw'
+    ? document.getElementById('skuInput').value.trim()
+    : document.getElementById('skuInputCam').value.trim();
+}
+
+function clearSkuVal() {
+  document.getElementById('skuInput').value = '';
+  document.getElementById('skuInputCam').value = '';
+  document.getElementById('camResult').style.display = 'none';
+}
+
+// CAMERA
+let reader = null, camStream = null, camOn = false, cooldown = false;
+
+async function startCam() {
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+  } catch {
+    showToast('Izin kamera ditolak. Cek pengaturan browser.', 'error', 'fa-circle-xmark');
+    return;
+  }
+  await populateCamList();
+  const deviceId = document.getElementById('camSelect').value;
+  const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } } };
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('camVideo');
+    video.srcObject = camStream;
+    await video.play();
+    document.getElementById('camWrap').classList.add('open');
+    document.getElementById('btnCamOn').style.display  = 'none';
+    document.getElementById('btnCamOff').style.display = '';
+    document.getElementById('camDot').className = 'dot cam';
+    document.getElementById('camStatus').textContent = 'Kamera aktif — arahkan ke barcode';
+    document.getElementById('camBox').classList.add('pulsing');
+    camOn = true;
+    reader = new ZXingBrowser.BrowserMultiFormatReader();
+    decodeLoop(video);
+  } catch(e) {
+    showToast('Gagal membuka kamera: ' + (e.message || e), 'error', 'fa-circle-xmark');
+  }
+}
+
+function decodeLoop(video) {
+  if (!reader || !camOn) return;
+  reader.decodeOnceFromVideoElement(video)
+    .then(res => { if (camOn && !cooldown) onScan(res.getText()); })
+    .catch(() => {})
+    .finally(() => { if (camOn) setTimeout(() => decodeLoop(video), 150); });
+}
+
+function onScan(code) {
+  if (!code || cooldown) return;
+  cooldown = true;
+  const f = document.getElementById('camFlash');
+  f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 180);
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ac.createOscillator(), g = ac.createGain();
+    osc.connect(g); g.connect(ac.destination);
+    osc.frequency.value = 1900;
+    g.gain.setValueAtTime(.28, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .12);
+    osc.start(); osc.stop(ac.currentTime + .12);
+  } catch(_) {}
+  document.getElementById('skuInputCam').value = code;
+  document.getElementById('skuInput').value    = code;
+  document.getElementById('camResultVal').textContent = code;
+  document.getElementById('camResult').style.display = '';
+  document.getElementById('camStatus').textContent = 'Terbaca! Lengkapi data lalu simpan.';
+  showToast('Barcode terbaca', 'success', 'fa-barcode');
+  setTimeout(() => {
+    cooldown = false;
+    if (camOn) document.getElementById('camStatus').textContent = 'Kamera aktif — arahkan ke barcode';
+  }, 2200);
+}
+
+function stopCam() {
+  camOn = false;
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (reader)    { try { reader.reset(); } catch(_) {} reader = null; }
+  document.getElementById('camVideo').srcObject = null;
+  document.getElementById('camWrap').classList.remove('open');
+  document.getElementById('btnCamOn').style.display  = '';
+  document.getElementById('btnCamOff').style.display = 'none';
+  document.getElementById('camDot').className = 'dot';
+  document.getElementById('camStatus').textContent = 'Kamera tidak aktif';
+  document.getElementById('camBox').classList.remove('pulsing');
+}
+
+async function populateCamList() {
+  try {
+    const devs = await ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
+    const sel = document.getElementById('camSelect');
+    sel.innerHTML = '';
+    devs.forEach((d, i) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId; o.textContent = d.label || ('Kamera ' + (i+1));
+      sel.appendChild(o);
+    });
+    const bi = devs.findIndex(d => /back|rear|environment/i.test(d.label));
+    if (bi > -1) sel.selectedIndex = bi;
+  } catch(_) {}
+}
+
+function switchCam() { if (camOn) { stopCam(); setTimeout(startCam, 300); } }
+
+// FORM
+function chQty(d) {
+  const el = document.getElementById('qtyInput');
+  el.value = Math.max(1, Math.min(9999, (parseInt(el.value) || 1) + d));
+}
+
+function addItem() {
+  const sku  = getSkuVal();
+  const name = document.getElementById('nameInput').value.trim();
+  const qty  = parseInt(document.getElementById('qtyInput').value) || 1;
+  const note = document.getElementById('noteInput').value.trim();
+  if (!sku) {
+    showToast('SKU / ODO Number harus diisi', 'error', 'fa-circle-exclamation');
+    if (mode === 'hw') focusSku();
+    return;
+  }
+  items.unshift({
+    id: Date.now().toString(), sku, name, qty, note,
+    taken: false, takenAt: null,
+    time: new Date().toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+  });
+  save(); renderList(); clearForm();
+  showToast('Item berhasil ditambahkan', 'success', 'fa-circle-check');
+  if (window.innerWidth <= 768) switchTab('list');
+}
+
+function clearForm() {
+  clearSkuVal();
+  document.getElementById('nameInput').value = '';
+  document.getElementById('qtyInput').value  = '1';
+  document.getElementById('noteInput').value = '';
+  if (mode === 'hw') focusSku();
+  else if (camOn) document.getElementById('camStatus').textContent = 'Kamera aktif — arahkan ke barcode';
+}
+
+// TAKEN TOGGLE
+function toggleTaken(id) {
+  const idx = items.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  items[idx].taken = !items[idx].taken;
+  items[idx].takenAt = items[idx].taken
+    ? new Date().toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+    : null;
+  save(); renderList();
+  showToast(
+    items[idx].taken ? 'Barang ditandai sudah diambil' : 'Tanda diambil dibatalkan',
+    items[idx].taken ? 'success' : 'warning',
+    items[idx].taken ? 'fa-circle-check' : 'fa-circle-xmark'
+  );
+}
+
+// FILTER
+function setFilter(f) {
+  filter = f;
+  ['fAll','fPending','fTaken'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById({all:'fAll',pending:'fPending',taken:'fTaken'}[f]).classList.add('active');
+  renderList();
+}
+
+// RENDER
+function renderList() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const takenCount   = items.filter(x => x.taken).length;
+  const pendingCount = items.length - takenCount;
+  document.getElementById('totalBadge').textContent  = items.length;
+  document.getElementById('takenBadge').innerHTML    = takenCount + ' <i class="fa-solid fa-check"></i>';
+  document.getElementById('statTotal').textContent   = items.length;
+  document.getElementById('statTaken').textContent   = takenCount;
+  document.getElementById('statPending').textContent = pendingCount;
+
+  let f = items.filter(it =>
+    it.sku.toLowerCase().includes(q) || (it.name && it.name.toLowerCase().includes(q))
+  );
+  if (filter === 'taken')   f = f.filter(x => x.taken);
+  if (filter === 'pending') f = f.filter(x => !x.taken);
+
+  const body = document.getElementById('listBody');
+  if (!f.length) {
+    const ico = filter === 'taken' ? 'circle-check' : filter === 'pending' ? 'clock' : 'boxes-stacked';
+    const msg = items.length === 0
+      ? 'Belum ada data.<br>Scan atau input SKU untuk mulai mencatat.'
+      : filter === 'taken'   ? 'Belum ada barang yang ditandai diambil.'
+      : filter === 'pending' ? 'Semua barang sudah diambil.'
+      :                        'Tidak ada hasil untuk pencarian ini.';
+    body.innerHTML = '<div class="empty-state"><i class="fa-solid fa-' + ico + '"></i><p>' + msg + '</p></div>';
+    return;
+  }
+
+  body.innerHTML = f.map((it, i) =>
+    '<div class="item-card' + (it.taken ? ' taken' : '') + '" id="card-' + it.id + '">' +
+    '<div class="item-check"><button class="item-check-btn" onclick="toggleTaken(\'' + it.id + '\')" title="' + (it.taken ? 'Batalkan tanda diambil' : 'Tandai sudah diambil') + '"><i class="fa-solid fa-check"></i></button></div>' +
+    '<div class="item-number">' + String(f.length - i).padStart(2,'0') + '</div>' +
+    '<div class="item-body">' +
+      '<div class="item-sku"><i class="fa-solid fa-barcode" style="font-size:11px"></i> ' + eh(it.sku) + (it.taken ? ' <span class="taken-badge"><i class="fa-solid fa-check"></i> Diambil</span>' : '') + '</div>' +
+      (it.name ? '<div class="item-name">' + eh(it.name) + '</div>' : '') +
+      '<div class="item-meta">' +
+        '<div class="item-qty"><i class="fa-solid fa-cubes" style="font-size:11px"></i> <span>Ambil</span> <span class="item-qty-num">' + it.qty + '</span> <span>pcs</span></div>' +
+        '<div class="item-time"><i class="fa-regular fa-clock" style="margin-right:3px"></i>' + it.time + '</div>' +
+        (it.taken && it.takenAt ? '<div class="item-taken-time"><i class="fa-solid fa-circle-check" style="margin-right:3px"></i>' + it.takenAt + '</div>' : '') +
+      '</div>' +
+      (it.note ? '<div class="item-note"><i class="fa-solid fa-note-sticky" style="margin-right:5px;font-size:10px;color:var(--text-muted)"></i>' + eh(it.note) + '</div>' : '') +
+      '<div class="edit-form" id="ef-' + it.id + '">' +
+        '<div class="edit-row"><span class="edit-label">SKU</span><input class="edit-input" id="es-' + it.id + '" value="' + ea(it.sku) + '"></div>' +
+        '<div class="edit-row"><span class="edit-label">Nama</span><input class="edit-input" id="en-' + it.id + '" value="' + ea(it.name||'') + '" placeholder="(opsional)"></div>' +
+        '<div class="edit-row"><span class="edit-label">Qty</span><input type="number" class="edit-input" id="eq-' + it.id + '" value="' + it.qty + '" min="1" max="9999" style="max-width:80px"></div>' +
+        '<div class="edit-row"><span class="edit-label">Note</span><input class="edit-input" id="eno-' + it.id + '" value="' + ea(it.note||'') + '" placeholder="(opsional)"></div>' +
+        '<div class="edit-actions">' +
+          '<button class="btn-cancel-edit" onclick="cancelEdit(\'' + it.id + '\')"><i class="fa-solid fa-xmark"></i> Batal</button>' +
+          '<button class="btn-save" onclick="saveEdit(\'' + it.id + '\')"><i class="fa-solid fa-check"></i> Simpan</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="item-actions">' +
+      '<button class="icon-btn icon-btn-edit" onclick="toggleEdit(\'' + it.id + '\')" title="Edit"><i class="fa-solid fa-pen"></i></button>' +
+      '<button class="icon-btn icon-btn-del"  onclick="openDel(\'' + it.id + '\',\'' + ea(it.sku) + '\')" title="Hapus"><i class="fa-solid fa-trash"></i></button>' +
+    '</div>' +
+    '</div>'
+  ).join('');
+}
+
+// EDIT
+function toggleEdit(id) {
+  const f = document.getElementById('ef-'+id), c = document.getElementById('card-'+id);
+  const was = f.classList.contains('open');
+  document.querySelectorAll('.edit-form.open').forEach(x => x.classList.remove('open'));
+  document.querySelectorAll('.item-card.editing').forEach(x => x.classList.remove('editing'));
+  if (!was) { f.classList.add('open'); c.classList.add('editing'); document.getElementById('es-'+id).focus(); }
+}
+function cancelEdit(id) { document.getElementById('ef-'+id).classList.remove('open'); document.getElementById('card-'+id).classList.remove('editing'); }
+function saveEdit(id) {
+  const sku = document.getElementById('es-'+id).value.trim();
+  if (!sku) { showToast('SKU tidak boleh kosong', 'error', 'fa-circle-exclamation'); return; }
+  const idx = items.findIndex(x => x.id === id); if (idx === -1) return;
+  items[idx].sku  = sku;
+  items[idx].name = document.getElementById('en-'+id).value.trim();
+  items[idx].qty  = parseInt(document.getElementById('eq-'+id).value) || 1;
+  items[idx].note = document.getElementById('eno-'+id).value.trim();
+  save(); renderList(); showToast('Perubahan disimpan', 'success', 'fa-circle-check');
+}
+
+// DELETE / RESET
+function openDel(id, sku) { delTarget = id; document.getElementById('deleteDesc').textContent = 'Hapus item SKU: ' + sku + '?'; openModal('deleteModal'); }
+function confirmDelete() { if (!delTarget) return; items = items.filter(x => x.id !== delTarget); save(); renderList(); closeModal('deleteModal'); showToast('Item dihapus', 'warning', 'fa-trash-can'); }
+function openResetModal() { if (!items.length) { showToast('Tidak ada data untuk dihapus', 'warning', 'fa-circle-info'); return; } openModal('resetModal'); }
+function resetAll() { items = []; save(); renderList(); closeModal('resetModal'); showToast('Semua data telah dihapus', 'warning', 'fa-trash-can'); }
+
+// MODALS
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+['resetModal','deleteModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => { if (e.target === document.getElementById(id)) closeModal(id); });
+});
+
+// TOAST
+let tt;
+function showToast(msg, type='success', icon='fa-circle-check') {
+  clearTimeout(tt);
+  const t = document.getElementById('toast');
+  t.className = 'toast ' + type;
+  t.querySelector('i').className = 'fa-solid ' + icon;
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  tt = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// MOBILE / LAYOUT
+function switchTab(tab) {
+  const form = document.getElementById('panelForm'), list = document.getElementById('panelList');
+  if (tab === 'form') {
+    form.style.display = 'flex'; list.style.display = 'none';
+    document.getElementById('navForm').classList.add('active');
+    document.getElementById('navList').classList.remove('active');
+    if (mode === 'hw') setTimeout(focusSku, 100);
+  } else {
+    form.style.display = 'none'; list.style.display = 'flex';
+    document.getElementById('navList').classList.add('active');
+    document.getElementById('navForm').classList.remove('active');
+  }
+}
+
+function initLayout() {
+  if (window.innerWidth <= 768) {
+    document.getElementById('panelList').style.display = 'none';
+    document.getElementById('panelList').style.flexDirection = 'column';
+  } else {
+    document.getElementById('panelForm').style.display = '';
+    document.getElementById('panelList').style.display = '';
+  }
+}
+
+window.addEventListener('resize', initLayout);
+window.addEventListener('beforeunload', stopCam);
+
+// INIT
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('skuInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (document.getElementById('skuInput').value.trim()) {
+        document.getElementById('hwStatus').textContent = 'Terbaca!';
+        setTimeout(() => document.getElementById('hwStatus').textContent = 'Siap scan', 1500);
+        document.getElementById('nameInput').focus();
+      }
+    }
+  });
+  document.getElementById('skuInputCam').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('nameInput').focus(); } });
+  document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('qtyInput').focus(); });
+  document.getElementById('qtyInput').addEventListener('keydown',  e => { if (e.key === 'Enter') document.getElementById('noteInput').focus(); });
+  document.getElementById('noteInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem(); } });
+  load(); renderList(); focusSku(); initLayout();
+});
+
+// HELPERS
+function eh(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ea(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+</body>
+</html>
