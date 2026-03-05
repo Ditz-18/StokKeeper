@@ -597,26 +597,40 @@ function showToast(msg, type='success', icon='fa-circle-check') {
 
 // MOBILE / LAYOUT
 function switchTab(tab) {
-  const form = document.getElementById('panelForm'), list = document.getElementById('panelList');
+  const form = document.getElementById('panelForm');
+  const list = document.getElementById('panelList');
+  const navForm = document.getElementById('navForm');
+  const navList = document.getElementById('navList');
+
   if (tab === 'form') {
-    form.style.display = 'flex'; list.style.display = 'none';
-    document.getElementById('navForm').classList.add('active');
-    document.getElementById('navList').classList.remove('active');
+    form.style.display = 'flex';
+    list.style.display = 'none';
+    navForm.classList.add('active');
+    navList.classList.remove('active');
     if (mode === 'hw') setTimeout(focusSku, 100);
   } else {
-    form.style.display = 'none'; list.style.display = 'flex';
-    document.getElementById('navList').classList.add('active');
-    document.getElementById('navForm').classList.remove('active');
+    form.style.display = 'none';
+    list.style.display = 'flex';
+    navList.classList.add('active');
+    navForm.classList.remove('active');
   }
 }
 
 function initLayout() {
-  if (window.innerWidth <= 768) {
-    document.getElementById('panelList').style.display = 'none';
-    document.getElementById('panelList').style.flexDirection = 'column';
+  const isMobile = window.innerWidth <= 768;
+  const form = document.getElementById('panelForm');
+  const list = document.getElementById('panelList');
+  if (isMobile) {
+    // Default: show form, hide list
+    const listActive = list.style.display === 'flex';
+    if (!listActive) {
+      form.style.display = 'flex';
+      list.style.display = 'none';
+    }
   } else {
-    document.getElementById('panelForm').style.display = '';
-    document.getElementById('panelList').style.display = '';
+    // Desktop: both visible, driven purely by CSS grid
+    form.style.display = '';
+    list.style.display = '';
   }
 }
 
