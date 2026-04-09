@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>StockReq - Bagas Aditya</title>
-
-<!-- PWA Meta -->
 <meta name="application-name" content="StockReq">
 <meta name="description" content="Pencatatan Stok Kosong">
 <meta name="theme-color" content="#0f0f0f">
@@ -15,21 +13,17 @@
 <meta name="apple-mobile-web-app-title" content="StockReq">
 <meta name="msapplication-TileColor" content="#0f0f0f">
 <meta name="msapplication-TileImage" content="https://a.top4top.io/p_3716lgwwh0.png">
-
-<!-- Favicon & Icons -->
 <link rel="icon" type="image/png" href="https://a.top4top.io/p_3716lgwwh0.png">
 <link rel="shortcut icon" href="https://a.top4top.io/p_3716lgwwh0.png">
 <link rel="apple-touch-icon" href="https://a.top4top.io/p_3716lgwwh0.png">
 <link rel="apple-touch-icon" sizes="152x152" href="https://a.top4top.io/p_3716lgwwh0.png">
 <link rel="apple-touch-icon" sizes="180x180" href="https://a.top4top.io/p_3716lgwwh0.png">
-
-<!-- PWA Manifest -->
 <link rel="manifest" href="manifest.json">
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="stock-tracker.css">
-<!-- ZXing via jsDelivr UMD build — exposes window.ZXing -->
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.2/umd/index.min.js"></script>
+<!-- JsBarcode for SKU barcode generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
 </head>
 <body>
 
@@ -37,20 +31,45 @@
   <div class="header-brand">
     <div class="header-icon"><i class="fa-solid fa-barcode"></i></div>
     <div>
-      <div class="header-title">StockReq - Bagas Aditya</div>
-      <div class="header-sub">Pencatatan Stok Kosong</div>
+      <div class="header-title">StockReq</div>
+      <div class="header-sub" id="headerSub">Pencatatan Stok Kosong</div>
     </div>
   </div>
   <div class="header-right">
-    <span class="badge-taken" id="takenBadge" title="Sudah diambil">0 <i class="fa-solid fa-check"></i></span>
+    <span class="badge-taken" id="takenBadge" title="Sudah dipick">0 <i class="fa-solid fa-check"></i></span>
     <span class="badge-count" id="totalBadge" title="Total item">0</span>
   </div>
 </header>
 
 <div class="layout">
 
-  <!-- FORM PANEL -->
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE: ISI -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page-isi" id="pageIsi">
   <div class="panel-form" id="panelForm">
+
+    <!-- SKU Picker dari master SKU (opsional) -->
+    <div>
+      <div class="section-label">Pilih dari Master SKU <span class="optional-tag">(opsional — isi otomatis)</span></div>
+      <div class="sku-picker-wrap" id="skuPickerWrap">
+        <div class="sku-picker-display" id="skuPickerDisplay" onclick="toggleSkuPicker()">
+          <i class="fa-solid fa-database" style="color:var(--text-muted);font-size:12px"></i>
+          <span id="skuPickerLabel" style="flex:1;color:var(--text-muted)">-- Pilih barang dari master SKU --</span>
+          <i class="fa-solid fa-chevron-down" id="skuPickerChevron" style="color:var(--text-muted);font-size:11px;transition:transform .2s"></i>
+        </div>
+        <div class="sku-picker-dropdown" id="skuPickerDropdown">
+          <div class="sku-picker-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="skuPickerSearch" placeholder="Cari SKU, nama, atau lokasi..." oninput="filterSkuPicker()" autocomplete="off">
+          </div>
+          <div class="sku-picker-list" id="skuPickerList"></div>
+        </div>
+      </div>
+      <button class="btn-clear-picker" id="btnClearPicker" onclick="clearSkuPicker()" style="display:none">
+        <i class="fa-solid fa-xmark"></i> Hapus pilihan & isi manual
+      </button>
+    </div>
 
     <div>
       <div class="section-label">SKU / ODO Number <span style="color:var(--danger);font-size:12px">*</span></div>
@@ -124,10 +143,22 @@
       </div>
     </div>
 
-    <!-- Nama (opsional) -->
+    <!-- ODO Number -->
+    <div id="odoField">
+      <div class="section-label">ODO Number <span class="optional-tag">(opsional)</span></div>
+      <input type="text" id="odoInput" class="input-field" placeholder="ODO Number...">
+    </div>
+
+    <!-- Nama -->
     <div>
       <div class="section-label">Nama Barang <span class="optional-tag">(opsional)</span></div>
       <input type="text" id="nameInput" class="input-field" placeholder="Nama / deskripsi barang...">
+    </div>
+
+    <!-- Lokasi -->
+    <div id="lokasiField">
+      <div class="section-label">Lokasi / Koordinat <span class="optional-tag">(opsional)</span></div>
+      <input type="text" id="lokasiInput" class="input-field" placeholder="Contoh: DCL 1.1.1, RAK A-3...">
     </div>
 
     <!-- Qty -->
@@ -147,58 +178,272 @@
     </div>
 
     <button class="btn btn-primary" onclick="addItem()">
-      <i class="fa-solid fa-circle-plus"></i> Tambah Ke Daftar
+      <i class="fa-solid fa-circle-plus"></i> Tambah Ke Pick List
     </button>
   </div>
+  </div>
 
-  <!-- LIST PANEL -->
-  <div class="panel-list" id="panelList">
-    <div class="list-header">
-      <div class="list-search">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="searchInput" placeholder="Cari SKU atau nama..." oninput="renderList()">
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE: PICK -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page-pick" id="pagePick" style="display:none">
+    <div class="panel-list" id="panelList">
+      <div class="list-header">
+        <div class="list-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" placeholder="Cari SKU atau nama..." oninput="renderList()">
+        </div>
       </div>
-      <div class="filter-tabs">
-        <button class="filter-tab active" id="fAll"     onclick="setFilter('all')">Semua</button>
-        <button class="filter-tab f-pending" id="fPending" onclick="setFilter('pending')">
-          <i class="fa-solid fa-clock"></i> Belum
-        </button>
-        <button class="filter-tab f-taken" id="fTaken" onclick="setFilter('taken')">
-          <i class="fa-solid fa-check"></i> Diambil
-        </button>
+
+      <!-- Pick sections -->
+      <div class="pick-sections" id="pickSections">
+
+        <!-- BELUM PICK -->
+        <div class="pick-section" id="sectionPending">
+          <div class="pick-section-header">
+            <div class="pick-section-title">
+              <i class="fa-solid fa-clock" style="color:var(--accent)"></i>
+              Belum Pick
+              <span class="pick-section-count" id="countPending">0</span>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="pickAll()" id="btnPickAll" style="display:none">
+              <i class="fa-solid fa-check-double"></i> Pick Semua
+            </button>
+          </div>
+          <div class="pick-section-body" id="bodyPending"></div>
+        </div>
+
+        <!-- SUDAH PICK -->
+        <div class="pick-section pick-section-done" id="sectionDone">
+          <div class="pick-section-header" onclick="toggleDoneSection()">
+            <div class="pick-section-title">
+              <i class="fa-solid fa-circle-check" style="color:var(--taken)"></i>
+              Sudah Dipick
+              <span class="pick-section-count done" id="countDone">0</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn btn-danger-ghost btn-sm" onclick="openResetModal(event)">
+                <i class="fa-solid fa-trash-can"></i> Reset
+              </button>
+              <i class="fa-solid fa-chevron-down" id="doneSectionChevron" style="color:var(--text-muted);font-size:11px;transition:transform .2s"></i>
+            </div>
+          </div>
+          <div class="pick-section-body" id="bodyDone" style="display:none"></div>
+        </div>
+
       </div>
-    </div>
-    <div class="list-body" id="listBody"></div>
-    <div class="list-footer">
-      <div class="footer-stats">
-        <div class="footer-stat">Total: <span id="statTotal">0</span></div>
-        <div class="footer-stat">Diambil: <span class="green" id="statTaken">0</span></div>
-        <div class="footer-stat">Belum: <span class="yellow" id="statPending">0</span></div>
+
+      <div class="list-footer">
+        <div class="footer-stats">
+          <div class="footer-stat">Total: <span id="statTotal">0</span></div>
+          <div class="footer-stat">Dipick: <span class="green" id="statTaken">0</span></div>
+          <div class="footer-stat">Belum: <span class="yellow" id="statPending">0</span></div>
+        </div>
       </div>
-      <button class="btn btn-danger-ghost btn-sm" onclick="openResetModal()">
-        <i class="fa-solid fa-trash-can"></i> Reset Semua
-      </button>
     </div>
   </div>
-</div>
 
-<!-- Mobile nav -->
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE: SKU -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page-sku" id="pageSku" style="display:none">
+    <div class="panel-sku">
+
+      <!-- SKU Header / toolbar -->
+      <div class="sku-toolbar">
+        <div class="sku-toolbar-left">
+          <div class="list-search" style="flex:1">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="skuSearchInput" placeholder="Cari SKU, nama, lokasi..." oninput="renderSkuList()">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openSkuModal()" style="width:auto;white-space:nowrap">
+          <i class="fa-solid fa-plus"></i> Tambah SKU
+        </button>
+      </div>
+
+      <!-- SKU filter row -->
+      <div class="sku-filter-bar">
+        <button class="filter-tab active" id="skuFAll" onclick="setSkuFilter('all')">Semua</button>
+        <button class="filter-tab" id="skuFLoc" onclick="setSkuFilter('loc')"><i class="fa-solid fa-location-dot"></i> Ada Lokasi</button>
+        <button class="filter-tab" id="skuFNoLoc" onclick="setSkuFilter('noloc')"><i class="fa-solid fa-location-crosshairs"></i> Tanpa Lokasi</button>
+        <span class="sku-total-badge" id="skuTotalBadge">0</span>
+      </div>
+
+      <!-- SKU list body -->
+      <div class="sku-list-body" id="skuListBody"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE: PENGATURAN -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page-settings" id="pageSettings" style="display:none">
+    <div class="settings-wrap">
+
+      <!-- App Settings -->
+      <div class="settings-section">
+        <div class="settings-section-title"><i class="fa-solid fa-sliders"></i> Pengaturan Aplikasi</div>
+        <div class="settings-card">
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <div class="settings-row-label">Auto-fokus input SKU</div>
+              <div class="settings-row-desc">Otomatis fokus ke field SKU saat buka halaman Isi</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingAutoFocus" onchange="saveSetting('autoFocus', this.checked)" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <div class="settings-row-label">Pindah ke Pick setelah tambah</div>
+              <div class="settings-row-desc">Otomatis berpindah ke halaman Pick setelah input item</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingAutoSwitch" onchange="saveSetting('autoSwitch', this.checked)" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <div class="settings-row-label">Bunyi beep saat scan</div>
+              <div class="settings-row-desc">Mainkan suara saat barcode berhasil terbaca</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingBeep" onchange="saveSetting('beep', this.checked)" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Management -->
+      <div class="settings-section">
+        <div class="settings-section-title"><i class="fa-solid fa-database"></i> Manajemen Data</div>
+        <div class="settings-card">
+          <div class="settings-action-row" onclick="exportData()">
+            <div class="settings-action-icon" style="background:rgba(0,170,255,.12);color:var(--info)">
+              <i class="fa-solid fa-file-export"></i>
+            </div>
+            <div class="settings-action-text">
+              <div class="settings-action-label">Export Data Pick List</div>
+              <div class="settings-action-desc">Unduh data pick list dalam format JSON</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+          </div>
+          <div class="settings-action-row" onclick="exportSkuData()">
+            <div class="settings-action-icon" style="background:rgba(232,255,0,.1);color:var(--accent)">
+              <i class="fa-solid fa-tags"></i>
+            </div>
+            <div class="settings-action-text">
+              <div class="settings-action-label">Export Master SKU</div>
+              <div class="settings-action-desc">Unduh semua data master SKU dalam format JSON</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+          </div>
+          <div class="settings-action-row danger-row" onclick="openResetSkuModal()">
+            <div class="settings-action-icon" style="background:rgba(255,68,68,.1);color:var(--danger)">
+              <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <div class="settings-action-text">
+              <div class="settings-action-label" style="color:var(--danger)">Hapus Semua Master SKU</div>
+              <div class="settings-action-desc">Menghapus seluruh data master SKU secara permanen</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Install PWA -->
+      <div class="settings-section">
+        <div class="settings-section-title"><i class="fa-solid fa-mobile-screen"></i> Instalasi</div>
+        <div class="settings-card">
+          <div class="settings-action-row" onclick="triggerInstall()" id="installRow">
+            <div class="settings-action-icon" style="background:rgba(232,255,0,.1);color:var(--accent)">
+              <i class="fa-solid fa-download"></i>
+            </div>
+            <div class="settings-action-text">
+              <div class="settings-action-label">Install Aplikasi (PWA)</div>
+              <div class="settings-action-desc">Pasang ke layar utama perangkat Anda</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="color:var(--text-muted);font-size:12px"></i>
+          </div>
+          <div class="pwa-status-row" id="pwaStatusRow" style="display:none">
+            <i class="fa-solid fa-circle-check" style="color:var(--taken)"></i>
+            <span>Aplikasi sudah terinstall</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="settings-section">
+        <div class="settings-section-title"><i class="fa-solid fa-circle-info"></i> Tentang Aplikasi</div>
+        <div class="settings-card about-card">
+          <div class="about-logo">
+            <img src="https://a.top4top.io/p_3716lgwwh0.png" alt="StockReq">
+          </div>
+          <div class="about-app-name">StockReq</div>
+          <div class="about-app-ver">Versi 2.0.0</div>
+          <div class="about-app-desc">Aplikasi pencatatan stok kosong & manajemen pick list untuk kebutuhan operasional gudang.</div>
+          <div class="about-divider"></div>
+          <div class="about-copyright">
+            <div class="about-copyright-brand">DITZNET TECHNOLOGY</div>
+            <div class="about-copyright-text">© 2025 DITZNET TECHNOLOGY. Seluruh hak cipta dilindungi.</div>
+          </div>
+          <a class="about-wa-btn" href="https://wa.me/6281464435341" target="_blank">
+            <i class="fa-brands fa-whatsapp"></i>
+            Hubungi via WhatsApp
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end .layout -->
+
+<!-- Mobile nav — 4 tabs -->
 <nav class="mobile-nav">
-  <button class="mobile-nav-btn active" id="navForm" onclick="switchTab('form')">
-    <i class="fa-solid fa-plus-circle"></i><span>Input</span>
+  <button class="mobile-nav-btn active" id="navIsi" onclick="switchPage('isi')">
+    <i class="fa-solid fa-plus-circle"></i><span>Isi</span>
   </button>
-  <button class="mobile-nav-btn" id="navList" onclick="switchTab('list')">
-    <i class="fa-solid fa-list-ul"></i><span>Daftar</span>
+  <button class="mobile-nav-btn" id="navPick" onclick="switchPage('pick')">
+    <i class="fa-solid fa-hand-pointer"></i><span>Pick</span>
+  </button>
+  <button class="mobile-nav-btn" id="navSku" onclick="switchPage('sku')">
+    <i class="fa-solid fa-tags"></i><span>SKU</span>
+  </button>
+  <button class="mobile-nav-btn" id="navSettings" onclick="switchPage('settings')">
+    <i class="fa-solid fa-gear"></i><span>Pengaturan</span>
   </button>
 </nav>
 
-<!-- Reset modal -->
+<!-- Desktop sidebar nav -->
+<nav class="desktop-nav" id="desktopNav">
+  <button class="desktop-nav-btn active" id="dNavIsi" onclick="switchPage('isi')">
+    <i class="fa-solid fa-plus-circle"></i><span>Isi</span>
+  </button>
+  <button class="desktop-nav-btn" id="dNavPick" onclick="switchPage('pick')">
+    <i class="fa-solid fa-hand-pointer"></i><span>Pick</span>
+  </button>
+  <button class="desktop-nav-btn" id="dNavSku" onclick="switchPage('sku')">
+    <i class="fa-solid fa-tags"></i><span>SKU</span>
+  </button>
+  <button class="desktop-nav-btn" id="dNavSettings" onclick="switchPage('settings')">
+    <i class="fa-solid fa-gear"></i><span>Pengaturan</span>
+  </button>
+</nav>
+
+<!-- ════════ MODALS ════════ -->
+
+<!-- Reset pick list modal -->
 <div class="modal-overlay" id="resetModal">
   <div class="modal">
     <div class="modal-title">
-      <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);margin-right:8px"></i>Reset Semua Data
+      <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);margin-right:8px"></i>Reset Pick List
     </div>
-    <div class="modal-desc">Semua data permintaan stok akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.</div>
+    <div class="modal-desc">Semua data pick list akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('resetModal')">Batal</button>
       <button class="btn-danger" onclick="resetAll()"><i class="fa-solid fa-trash-can"></i> Hapus Semua</button>
@@ -206,7 +451,7 @@
   </div>
 </div>
 
-<!-- Delete modal -->
+<!-- Delete pick item modal -->
 <div class="modal-overlay" id="deleteModal">
   <div class="modal">
     <div class="modal-title">
@@ -220,21 +465,161 @@
   </div>
 </div>
 
+<!-- Reset master SKU modal -->
+<div class="modal-overlay" id="resetSkuModal">
+  <div class="modal">
+    <div class="modal-title">
+      <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);margin-right:8px"></i>Hapus Semua Master SKU
+    </div>
+    <div class="modal-desc">Seluruh data master SKU akan dihapus permanen. Pick list yang ada tidak akan terpengaruh.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('resetSkuModal')">Batal</button>
+      <button class="btn-danger" onclick="resetAllSku()"><i class="fa-solid fa-trash-can"></i> Hapus Semua</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete SKU modal -->
+<div class="modal-overlay" id="deleteSkuModal">
+  <div class="modal">
+    <div class="modal-title">
+      <i class="fa-solid fa-circle-xmark" style="color:var(--danger);margin-right:8px"></i>Hapus Master SKU
+    </div>
+    <div class="modal-desc" id="deleteSkuDesc">Yakin ingin menghapus SKU ini?</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('deleteSkuModal')">Batal</button>
+      <button class="btn-danger" onclick="confirmDeleteSku()"><i class="fa-solid fa-trash"></i> Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit SKU modal -->
+<div class="modal-overlay" id="skuFormModal">
+  <div class="modal modal-wide">
+    <div class="modal-title" id="skuFormTitle">
+      <i class="fa-solid fa-plus" style="color:var(--accent);margin-right:8px"></i>Tambah Master SKU
+    </div>
+    <div class="sku-form-grid">
+      <div class="sku-form-row">
+        <label class="sku-form-label">SKU Number <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="sfSku" class="input-field" placeholder="Masukkan SKU number..." oninput="updateSkuBarcode()">
+        <div class="sku-barcode-preview" id="skuBarcodePreview">
+          <svg id="skuBarcodeSvg"></svg>
+          <div class="sku-barcode-hint" id="skuBarcodeHint">Barcode akan muncul saat SKU diisi</div>
+        </div>
+      </div>
+      <div class="sku-form-row">
+        <label class="sku-form-label">ODO Number <span class="optional-tag">(opsional)</span></label>
+        <input type="text" id="sfOdo" class="input-field" placeholder="ODO Number...">
+      </div>
+      <div class="sku-form-row">
+        <label class="sku-form-label">Nama Barang <span class="optional-tag">(opsional)</span></label>
+        <input type="text" id="sfName" class="input-field" placeholder="Nama / deskripsi barang...">
+      </div>
+      <div class="sku-form-row">
+        <label class="sku-form-label">Lokasi / Koordinat <span class="optional-tag">(opsional)</span></label>
+        <input type="text" id="sfLokasi" class="input-field" placeholder="Contoh: DCL 1.1.1, RAK A-3...">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal('skuFormModal')">Batal</button>
+      <button class="btn btn-primary" style="width:auto" onclick="saveMasterSku()">
+        <i class="fa-solid fa-check"></i> Simpan SKU
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SKU Detail modal -->
+<div class="modal-overlay" id="skuDetailModal">
+  <div class="modal modal-wide">
+    <div class="modal-title">
+      <i class="fa-solid fa-tag" style="color:var(--accent);margin-right:8px"></i>Detail SKU
+    </div>
+    <div id="skuDetailContent"></div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeModal('skuDetailModal')">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">
   <i class="fa-solid fa-circle-check"></i>
   <span id="toastMsg"></span>
 </div>
 
+<!-- ════════════════════════════════════════════════════════ -->
 <script>
-// DATA
-const SK = 'stockreq_v3';
-let items = [], delTarget = null, mode = 'hw', filter = 'all';
+// ── STORAGE KEYS ─────────────────────────────────────────
+const SK      = 'stockreq_v3';      // pick list items
+const SK_SKU  = 'stockreq_sku_v1';  // master SKU
+const SK_SETT = 'stockreq_sett_v1'; // settings
 
-function load() { try { items = JSON.parse(localStorage.getItem(SK)) || []; } catch { items = []; } }
-function save() { localStorage.setItem(SK, JSON.stringify(items)); }
+// ── STATE ─────────────────────────────────────────────────
+let items       = [];
+let masterSkus  = [];
+let settings    = { autoFocus: true, autoSwitch: true, beep: true };
+let delTarget   = null;
+let delSkuTarget= null;
+let editSkuId   = null;
+let mode        = 'hw';
+let currentPage = 'isi';
+let doneSectionOpen = false;
+let skuFilter   = 'all';
+let selectedMasterSku = null; // currently selected from picker
 
-// MODE
+// ── LOAD / SAVE ────────────────────────────────────────────
+function load()     { try { items      = JSON.parse(localStorage.getItem(SK))      || []; } catch { items = []; } }
+function save()     { localStorage.setItem(SK, JSON.stringify(items)); }
+function loadSku()  { try { masterSkus = JSON.parse(localStorage.getItem(SK_SKU))  || []; } catch { masterSkus = []; } }
+function saveSku()  { localStorage.setItem(SK_SKU, JSON.stringify(masterSkus)); }
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SK_SETT));
+    if (s) settings = { ...settings, ...s };
+  } catch {}
+}
+function saveSetting(key, val) {
+  settings[key] = val;
+  localStorage.setItem(SK_SETT, JSON.stringify(settings));
+}
+
+// ── PAGE SWITCHING ─────────────────────────────────────────
+const PAGES = ['isi','pick','sku','settings'];
+function switchPage(p) {
+  currentPage = p;
+  PAGES.forEach(pg => {
+    const el = document.getElementById('page' + pg.charAt(0).toUpperCase() + pg.slice(1));
+    if (el) el.style.display = (pg === p) ? '' : 'none';
+  });
+
+  // Mobile nav
+  ['Isi','Pick','Sku','Settings'].forEach(n => {
+    const btn = document.getElementById('nav' + n);
+    if (btn) btn.classList.toggle('active', n.toLowerCase() === p);
+  });
+  // Desktop nav
+  ['Isi','Pick','Sku','Settings'].forEach(n => {
+    const btn = document.getElementById('dNav' + n);
+    if (btn) btn.classList.toggle('active', n.toLowerCase() === p);
+  });
+
+  // Page-specific subtitle
+  const subs = { isi: 'Input Pick List', pick: 'Pick List', sku: 'Master SKU', settings: 'Pengaturan' };
+  document.getElementById('headerSub').textContent = subs[p] || 'StockReq';
+
+  // Page-specific actions
+  if (p === 'isi' && settings.autoFocus) setTimeout(focusSku, 100);
+  if (p === 'pick') renderList();
+  if (p === 'sku') renderSkuList();
+  if (p === 'settings') loadSettingsUI();
+
+  // Stop camera when leaving isi
+  if (p !== 'isi') stopCam();
+}
+
+// ── SCAN MODE ──────────────────────────────────────────────
 function setMode(m) {
   mode = m;
   document.getElementById('tabHW').classList.toggle('active', m === 'hw');
@@ -256,26 +641,16 @@ function getSkuVal() {
 }
 
 function clearSkuVal() {
-  document.getElementById('skuInput').value = '';
+  document.getElementById('skuInput').value    = '';
   document.getElementById('skuInputCam').value = '';
   document.getElementById('camResult').style.display = 'none';
 }
 
-// ── CAMERA SCANNER ────────────────────────────
-// Strategy:
-//   1. Open camera stream via getUserMedia
-//   2. Use native BarcodeDetector if available (Chrome/Edge/Android WebView)
-//   3. Fallback: ZXing UMD global (window.ZXing.BrowserMultiFormatReader)
-//   4. Fallback: canvas snapshot → ZXing ImageReader
-
+// ── CAMERA SCANNER ─────────────────────────────────────────
 let camStream = null, camOn = false, cooldown = false;
-let camRAF = null;             // requestAnimationFrame handle
-let zxingReader = null;        // ZXing instance for fallback
-let offCanvas = null;          // offscreen canvas for ZXing fallback
-let nativeDetector = null;     // BarcodeDetector instance
+let camRAF = null, zxingReader = null, offCanvas = null, nativeDetector = null;
 
 async function startCam() {
-  // 1. Get camera permission
   try {
     const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
     tmp.getTracks().forEach(t => t.stop());
@@ -283,54 +658,38 @@ async function startCam() {
     showToast('Izin kamera ditolak. Cek pengaturan browser.', 'error', 'fa-circle-xmark');
     return;
   }
-
   await populateCamList();
-  const deviceId = document.getElementById('camSelect').value;
+  const deviceId  = document.getElementById('camSelect').value;
   const constraints = {
     video: deviceId
       ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
       : { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
   };
-
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia(constraints);
-  } catch(e) {
-    showToast('Gagal membuka kamera: ' + (e.message || e), 'error', 'fa-circle-xmark');
-    return;
-  }
+  try { camStream = await navigator.mediaDevices.getUserMedia(constraints); }
+  catch(e) { showToast('Gagal membuka kamera: ' + (e.message || e), 'error', 'fa-circle-xmark'); return; }
 
   const video = document.getElementById('camVideo');
   video.srcObject = camStream;
   video.setAttribute('playsinline', true);
+  await new Promise(resolve => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
 
-  await new Promise(resolve => {
-    video.onloadedmetadata = () => { video.play(); resolve(); };
-  });
-
-  // Show UI
   document.getElementById('camWrap').classList.add('open');
   document.getElementById('btnCamOn').style.display  = 'none';
   document.getElementById('btnCamOff').style.display = '';
-  document.getElementById('camDot').className     = 'dot cam';
-  document.getElementById('camStatus').textContent  = 'Kamera aktif — arahkan ke barcode';
+  document.getElementById('camDot').className    = 'dot cam';
+  document.getElementById('camStatus').textContent = 'Kamera aktif — arahkan ke barcode';
   document.getElementById('camBox').classList.add('pulsing');
   camOn = true;
 
-  // 2. Init decoder
   if (window.BarcodeDetector) {
-    // Native API — fastest
     try {
       const formats = await BarcodeDetector.getSupportedFormats();
       nativeDetector = new BarcodeDetector({ formats });
-    } catch {
-      nativeDetector = new BarcodeDetector();
-    }
+    } catch { nativeDetector = new BarcodeDetector(); }
     scanLoopNative(video);
   } else {
-    // ZXing fallback
     offCanvas = document.createElement('canvas');
     try {
-      // @zxing/library UMD exports as window.ZXing
       zxingReader = new ZXing.BrowserMultiFormatReader();
       scanLoopZXing(video);
     } catch(e) {
@@ -340,71 +699,58 @@ async function startCam() {
   }
 }
 
-// Native BarcodeDetector loop
 function scanLoopNative(video) {
   if (!camOn) return;
   nativeDetector.detect(video)
-    .then(results => {
-      if (results && results.length > 0 && !cooldown) {
-        onScan(results[0].rawValue);
-      }
-    })
+    .then(results => { if (results && results.length > 0 && !cooldown) onScan(results[0].rawValue); })
     .catch(() => {})
-    .finally(() => {
-      if (camOn) camRAF = requestAnimationFrame(() => scanLoopNative(video));
-    });
+    .finally(() => { if (camOn) camRAF = requestAnimationFrame(() => scanLoopNative(video)); });
 }
 
-// ZXing canvas loop — capture frame every 250ms and decode
 function scanLoopZXing(video) {
   if (!camOn || !zxingReader) return;
-  const w = video.videoWidth  || 640;
-  const h = video.videoHeight || 480;
-  offCanvas.width  = w;
-  offCanvas.height = h;
+  const w = video.videoWidth || 640, h = video.videoHeight || 480;
+  offCanvas.width = w; offCanvas.height = h;
   const ctx = offCanvas.getContext('2d');
   ctx.drawImage(video, 0, 0, w, h);
-
   const luminanceSource = new ZXing.HTMLCanvasElementLuminanceSource(offCanvas);
   const binaryBitmap    = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-
   try {
     const result = zxingReader.decode(binaryBitmap);
     if (result && !cooldown) onScan(result.getText());
-  } catch(e) {
-    // NotFoundException → no barcode visible, normal
-  }
-
+  } catch(e) {}
   if (camOn) setTimeout(() => scanLoopZXing(video), 250);
 }
 
 function onScan(code) {
   if (!code || cooldown) return;
   cooldown = true;
-
-  // Flash overlay
   const fl = document.getElementById('camFlash');
   fl.classList.add('on');
   setTimeout(() => fl.classList.remove('on'), 180);
 
-  // Beep
-  try {
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ac.createOscillator(), g = ac.createGain();
-    osc.connect(g); g.connect(ac.destination);
-    osc.frequency.value = 1900;
-    g.gain.setValueAtTime(.28, ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .12);
-    osc.start(); osc.stop(ac.currentTime + .12);
-  } catch(_) {}
+  if (settings.beep) {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ac.createOscillator(), g = ac.createGain();
+      osc.connect(g); g.connect(ac.destination);
+      osc.frequency.value = 1900;
+      g.gain.setValueAtTime(.28, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + .12);
+      osc.start(); osc.stop(ac.currentTime + .12);
+    } catch(_) {}
+  }
 
-  // Populate SKU fields
   document.getElementById('skuInputCam').value = code;
   document.getElementById('skuInput').value    = code;
   document.getElementById('camResultVal').textContent = code;
   document.getElementById('camResult').style.display  = '';
   document.getElementById('camStatus').textContent    = 'Terbaca! Lengkapi data lalu simpan.';
   showToast('Barcode terbaca: ' + code, 'success', 'fa-barcode');
+
+  // Auto-match master SKU
+  const match = masterSkus.find(s => s.sku === code || s.odo === code);
+  if (match) fillFromMaster(match);
 
   setTimeout(() => {
     cooldown = false;
@@ -416,16 +762,21 @@ function stopCam() {
   camOn = false;
   if (camRAF) { cancelAnimationFrame(camRAF); camRAF = null; }
   if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
-  zxingReader    = null;
-  nativeDetector = null;
-  offCanvas      = null;
-  document.getElementById('camVideo').srcObject = null;
-  document.getElementById('camWrap').classList.remove('open');
-  document.getElementById('btnCamOn').style.display  = '';
-  document.getElementById('btnCamOff').style.display = 'none';
-  document.getElementById('camDot').className     = 'dot';
-  document.getElementById('camStatus').textContent  = 'Kamera tidak aktif';
-  document.getElementById('camBox').classList.remove('pulsing');
+  zxingReader = null; nativeDetector = null; offCanvas = null;
+  const vid = document.getElementById('camVideo');
+  if (vid) vid.srcObject = null;
+  const camWrap = document.getElementById('camWrap');
+  if (camWrap) camWrap.classList.remove('open');
+  const btnOn  = document.getElementById('btnCamOn');
+  const btnOff = document.getElementById('btnCamOff');
+  if (btnOn)  btnOn.style.display  = '';
+  if (btnOff) btnOff.style.display = 'none';
+  const dot    = document.getElementById('camDot');
+  const status = document.getElementById('camStatus');
+  if (dot)    dot.className = 'dot';
+  if (status) status.textContent = 'Kamera tidak aktif';
+  const camBox = document.getElementById('camBox');
+  if (camBox) camBox.classList.remove('pulsing');
 }
 
 async function populateCamList() {
@@ -434,17 +785,13 @@ async function populateCamList() {
     const cams = devs.filter(d => d.kind === 'videoinput');
     const sel  = document.getElementById('camSelect');
     sel.innerHTML = '';
-    if (!cams.length) {
-      sel.innerHTML = '<option value="">Tidak ada kamera</option>';
-      return;
-    }
+    if (!cams.length) { sel.innerHTML = '<option value="">Tidak ada kamera</option>'; return; }
     cams.forEach((d, i) => {
       const o = document.createElement('option');
       o.value = d.deviceId;
       o.textContent = d.label || ('Kamera ' + (i + 1));
       sel.appendChild(o);
     });
-    // Auto-select back camera on mobile
     const bi = cams.findIndex(d => /back|rear|environment/i.test(d.label));
     if (bi > -1) sel.selectedIndex = bi;
   } catch(_) {}
@@ -452,42 +799,130 @@ async function populateCamList() {
 
 function switchCam() { if (camOn) { stopCam(); setTimeout(startCam, 400); } }
 
-// FORM
+// ── SKU PICKER (in Isi form) ───────────────────────────────
+function toggleSkuPicker() {
+  const dd = document.getElementById('skuPickerDropdown');
+  const ch = document.getElementById('skuPickerChevron');
+  const open = dd.classList.toggle('open');
+  ch.style.transform = open ? 'rotate(180deg)' : '';
+  if (open) {
+    fillSkuPickerList('');
+    setTimeout(() => document.getElementById('skuPickerSearch').focus(), 50);
+  }
+}
+
+function filterSkuPicker() {
+  fillSkuPickerList(document.getElementById('skuPickerSearch').value.toLowerCase());
+}
+
+function fillSkuPickerList(q) {
+  const list = document.getElementById('skuPickerList');
+  const filtered = masterSkus.filter(s =>
+    !q ||
+    s.sku.toLowerCase().includes(q) ||
+    (s.name && s.name.toLowerCase().includes(q)) ||
+    (s.lokasi && s.lokasi.toLowerCase().includes(q)) ||
+    (s.odo && s.odo.toLowerCase().includes(q))
+  );
+  if (!filtered.length) {
+    list.innerHTML = '<div class="sku-picker-empty"><i class="fa-solid fa-magnifying-glass"></i> Tidak ada hasil</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(s => `
+    <div class="sku-picker-item" onclick="selectMasterSku('${ea(s.id)}')">
+      <div class="sku-picker-item-sku"><i class="fa-solid fa-barcode" style="font-size:10px;margin-right:5px"></i>${eh(s.sku)}</div>
+      ${s.name ? `<div class="sku-picker-item-name">${eh(s.name)}</div>` : ''}
+      <div class="sku-picker-item-meta">
+        ${s.odo ? `<span><i class="fa-solid fa-hashtag" style="font-size:9px"></i> ${eh(s.odo)}</span>` : ''}
+        ${s.lokasi ? `<span><i class="fa-solid fa-location-dot" style="font-size:9px"></i> ${eh(s.lokasi)}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectMasterSku(id) {
+  const s = masterSkus.find(x => x.id === id);
+  if (!s) return;
+  selectedMasterSku = s;
+  fillFromMaster(s);
+  // Update display
+  document.getElementById('skuPickerLabel').textContent = s.sku + (s.name ? ' — ' + s.name : '');
+  document.getElementById('skuPickerLabel').style.color = 'var(--accent)';
+  document.getElementById('skuPickerDropdown').classList.remove('open');
+  document.getElementById('skuPickerChevron').style.transform = '';
+  document.getElementById('btnClearPicker').style.display = '';
+  showToast('Data terisi dari master SKU', 'success', 'fa-database');
+}
+
+function fillFromMaster(s) {
+  document.getElementById('skuInput').value    = s.sku || '';
+  document.getElementById('skuInputCam').value = s.sku || '';
+  document.getElementById('odoInput').value    = s.odo || '';
+  document.getElementById('nameInput').value   = s.name || '';
+  document.getElementById('lokasiInput').value = s.lokasi || '';
+}
+
+function clearSkuPicker() {
+  selectedMasterSku = null;
+  document.getElementById('skuPickerLabel').textContent = '-- Pilih barang dari master SKU --';
+  document.getElementById('skuPickerLabel').style.color = '';
+  document.getElementById('btnClearPicker').style.display = 'none';
+  clearForm();
+}
+
+// Close picker when clicking outside
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('skuPickerWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('skuPickerDropdown').classList.remove('open');
+    document.getElementById('skuPickerChevron').style.transform = '';
+  }
+});
+
+// ── FORM ──────────────────────────────────────────────────
 function chQty(d) {
   const el = document.getElementById('qtyInput');
   el.value = Math.max(1, Math.min(9999, (parseInt(el.value) || 1) + d));
 }
 
 function addItem() {
-  const sku  = getSkuVal();
-  const name = document.getElementById('nameInput').value.trim();
-  const qty  = parseInt(document.getElementById('qtyInput').value) || 1;
-  const note = document.getElementById('noteInput').value.trim();
+  const sku   = getSkuVal();
+  const odo   = document.getElementById('odoInput').value.trim();
+  const name  = document.getElementById('nameInput').value.trim();
+  const lokasi= document.getElementById('lokasiInput').value.trim();
+  const qty   = parseInt(document.getElementById('qtyInput').value) || 1;
+  const note  = document.getElementById('noteInput').value.trim();
   if (!sku) {
     showToast('SKU / ODO Number harus diisi', 'error', 'fa-circle-exclamation');
     if (mode === 'hw') focusSku();
     return;
   }
   items.unshift({
-    id: Date.now().toString(), sku, name, qty, note,
+    id: Date.now().toString(), sku, odo, name, lokasi, qty, note,
     taken: false, takenAt: null,
     time: new Date().toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
   });
   save(); renderList(); clearForm();
   showToast('Item berhasil ditambahkan', 'success', 'fa-circle-check');
-  if (window.innerWidth <= 768) switchTab('list');
+  if (settings.autoSwitch) switchPage('pick');
 }
 
 function clearForm() {
   clearSkuVal();
-  document.getElementById('nameInput').value = '';
-  document.getElementById('qtyInput').value  = '1';
-  document.getElementById('noteInput').value = '';
+  document.getElementById('odoInput').value   = '';
+  document.getElementById('nameInput').value  = '';
+  document.getElementById('lokasiInput').value= '';
+  document.getElementById('qtyInput').value   = '1';
+  document.getElementById('noteInput').value  = '';
+  selectedMasterSku = null;
+  document.getElementById('skuPickerLabel').textContent = '-- Pilih barang dari master SKU --';
+  document.getElementById('skuPickerLabel').style.color = '';
+  document.getElementById('btnClearPicker').style.display = 'none';
   if (mode === 'hw') focusSku();
   else if (camOn) document.getElementById('camStatus').textContent = 'Kamera aktif — arahkan ke barcode';
 }
 
-// TAKEN TOGGLE
+// ── PICK TOGGLE ───────────────────────────────────────────
 function toggleTaken(id) {
   const idx = items.findIndex(x => x.id === id);
   if (idx === -1) return;
@@ -497,82 +932,112 @@ function toggleTaken(id) {
     : null;
   save(); renderList();
   showToast(
-    items[idx].taken ? 'Barang ditandai sudah diambil' : 'Tanda diambil dibatalkan',
+    items[idx].taken ? 'Barang ditandai sudah dipick' : 'Tanda pick dibatalkan',
     items[idx].taken ? 'success' : 'warning',
     items[idx].taken ? 'fa-circle-check' : 'fa-circle-xmark'
   );
 }
 
-// FILTER
-function setFilter(f) {
-  filter = f;
-  ['fAll','fPending','fTaken'].forEach(id => document.getElementById(id).classList.remove('active'));
-  document.getElementById({all:'fAll',pending:'fPending',taken:'fTaken'}[f]).classList.add('active');
-  renderList();
+function pickAll() {
+  const pending = items.filter(x => !x.taken);
+  if (!pending.length) return;
+  const now = new Date().toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+  pending.forEach(it => { it.taken = true; it.takenAt = now; });
+  save(); renderList();
+  showToast('Semua item ditandai sudah dipick', 'success', 'fa-check-double');
 }
 
-// RENDER
+function toggleDoneSection() {
+  doneSectionOpen = !doneSectionOpen;
+  document.getElementById('bodyDone').style.display = doneSectionOpen ? '' : 'none';
+  document.getElementById('doneSectionChevron').style.transform = doneSectionOpen ? 'rotate(180deg)' : '';
+}
+
+// ── RENDER PICK LIST ──────────────────────────────────────
 function renderList() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const takenCount   = items.filter(x => x.taken).length;
-  const pendingCount = items.length - takenCount;
-  document.getElementById('totalBadge').textContent  = items.length;
-  document.getElementById('takenBadge').innerHTML    = takenCount + ' <i class="fa-solid fa-check"></i>';
-  document.getElementById('statTotal').textContent   = items.length;
-  document.getElementById('statTaken').textContent   = takenCount;
-  document.getElementById('statPending').textContent = pendingCount;
+  const q           = (document.getElementById('searchInput').value || '').toLowerCase();
+  const takenCount  = items.filter(x => x.taken).length;
+  const pendCount   = items.length - takenCount;
 
-  let f = items.filter(it =>
-    it.sku.toLowerCase().includes(q) || (it.name && it.name.toLowerCase().includes(q))
+  document.getElementById('totalBadge').textContent = items.length;
+  document.getElementById('takenBadge').innerHTML   = takenCount + ' <i class="fa-solid fa-check"></i>';
+  document.getElementById('statTotal').textContent  = items.length;
+  document.getElementById('statTaken').textContent  = takenCount;
+  document.getElementById('statPending').textContent= pendCount;
+  document.getElementById('countPending').textContent= pendCount;
+  document.getElementById('countDone').textContent  = takenCount;
+
+  const btnPickAll = document.getElementById('btnPickAll');
+  btnPickAll.style.display = pendCount > 0 ? '' : 'none';
+
+  let filtered = items.filter(it =>
+    it.sku.toLowerCase().includes(q) ||
+    (it.name && it.name.toLowerCase().includes(q)) ||
+    (it.odo  && it.odo.toLowerCase().includes(q))
   );
-  if (filter === 'taken')   f = f.filter(x => x.taken);
-  if (filter === 'pending') f = f.filter(x => !x.taken);
 
-  const body = document.getElementById('listBody');
-  if (!f.length) {
-    const ico = filter === 'taken' ? 'circle-check' : filter === 'pending' ? 'clock' : 'boxes-stacked';
-    const msg = items.length === 0
-      ? 'Belum ada data.<br>Scan atau input SKU untuk mulai mencatat.'
-      : filter === 'taken'   ? 'Belum ada barang yang ditandai diambil.'
-      : filter === 'pending' ? 'Semua barang sudah diambil.'
-      :                        'Tidak ada hasil untuk pencarian ini.';
-    body.innerHTML = '<div class="empty-state"><i class="fa-solid fa-' + ico + '"></i><p>' + msg + '</p></div>';
-    return;
+  const pending = filtered.filter(x => !x.taken);
+  const done    = filtered.filter(x => x.taken);
+
+  // Render pending
+  const bPend = document.getElementById('bodyPending');
+  if (!pending.length) {
+    bPend.innerHTML = '<div class="empty-state" style="padding:30px 20px"><i class="fa-solid fa-inbox"></i><p>' +
+      (items.length === 0 ? 'Belum ada item.<br>Tambahkan via halaman Isi.' : 'Semua sudah dipick! 🎉') + '</p></div>';
+  } else {
+    bPend.innerHTML = pending.map((it, i) => renderCard(it, i, pending.length, false)).join('');
   }
 
-  body.innerHTML = f.map((it, i) =>
-    '<div class="item-card' + (it.taken ? ' taken' : '') + '" id="card-' + it.id + '">' +
-    '<div class="item-check"><button class="item-check-btn" onclick="toggleTaken(\'' + it.id + '\')" title="' + (it.taken ? 'Batalkan tanda diambil' : 'Tandai sudah diambil') + '"><i class="fa-solid fa-check"></i></button></div>' +
-    '<div class="item-number">' + String(f.length - i).padStart(2,'0') + '</div>' +
-    '<div class="item-body">' +
-      '<div class="item-sku"><i class="fa-solid fa-barcode" style="font-size:11px"></i> ' + eh(it.sku) + (it.taken ? ' <span class="taken-badge"><i class="fa-solid fa-check"></i> Diambil</span>' : '') + '</div>' +
-      (it.name ? '<div class="item-name">' + eh(it.name) + '</div>' : '') +
-      '<div class="item-meta">' +
-        '<div class="item-qty"><i class="fa-solid fa-cubes" style="font-size:11px"></i> <span>Ambil</span> <span class="item-qty-num">' + it.qty + '</span> <span>pcs</span></div>' +
-        '<div class="item-time"><i class="fa-regular fa-clock" style="margin-right:3px"></i>' + it.time + '</div>' +
-        (it.taken && it.takenAt ? '<div class="item-taken-time"><i class="fa-solid fa-circle-check" style="margin-right:3px"></i>' + it.takenAt + '</div>' : '') +
-      '</div>' +
-      (it.note ? '<div class="item-note"><i class="fa-solid fa-note-sticky" style="margin-right:5px;font-size:10px;color:var(--text-muted)"></i>' + eh(it.note) + '</div>' : '') +
-      '<div class="edit-form" id="ef-' + it.id + '">' +
-        '<div class="edit-row"><span class="edit-label">SKU</span><input class="edit-input" id="es-' + it.id + '" value="' + ea(it.sku) + '"></div>' +
-        '<div class="edit-row"><span class="edit-label">Nama</span><input class="edit-input" id="en-' + it.id + '" value="' + ea(it.name||'') + '" placeholder="(opsional)"></div>' +
-        '<div class="edit-row"><span class="edit-label">Qty</span><input type="number" class="edit-input" id="eq-' + it.id + '" value="' + it.qty + '" min="1" max="9999" style="max-width:80px"></div>' +
-        '<div class="edit-row"><span class="edit-label">Note</span><input class="edit-input" id="eno-' + it.id + '" value="' + ea(it.note||'') + '" placeholder="(opsional)"></div>' +
-        '<div class="edit-actions">' +
-          '<button class="btn-cancel-edit" onclick="cancelEdit(\'' + it.id + '\')"><i class="fa-solid fa-xmark"></i> Batal</button>' +
-          '<button class="btn-save" onclick="saveEdit(\'' + it.id + '\')"><i class="fa-solid fa-check"></i> Simpan</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="item-actions">' +
-      '<button class="icon-btn icon-btn-edit" onclick="toggleEdit(\'' + it.id + '\')" title="Edit"><i class="fa-solid fa-pen"></i></button>' +
-      '<button class="icon-btn icon-btn-del"  onclick="openDel(\'' + it.id + '\',\'' + ea(it.sku) + '\')" title="Hapus"><i class="fa-solid fa-trash"></i></button>' +
-    '</div>' +
-    '</div>'
-  ).join('');
+  // Render done
+  const bDone = document.getElementById('bodyDone');
+  if (!done.length) {
+    bDone.innerHTML = '<div class="empty-state" style="padding:24px 20px"><i class="fa-solid fa-clock" style="color:var(--accent)"></i><p>Belum ada item yang dipick.</p></div>';
+  } else {
+    bDone.innerHTML = done.map((it, i) => renderCard(it, i, done.length, true)).join('');
+  }
 }
 
-// EDIT
+function renderCard(it, i, total, isTaken) {
+  return `<div class="item-card${isTaken ? ' taken' : ''}" id="card-${it.id}">
+    <div class="item-check">
+      <button class="item-check-btn" onclick="toggleTaken('${it.id}')" title="${isTaken ? 'Batalkan pick' : 'Tandai sudah dipick'}">
+        <i class="fa-solid fa-check"></i>
+      </button>
+    </div>
+    <div class="item-number">${String(total - i).padStart(2,'0')}</div>
+    <div class="item-body">
+      <div class="item-sku"><i class="fa-solid fa-barcode" style="font-size:11px"></i> ${eh(it.sku)}
+        ${isTaken ? '<span class="taken-badge"><i class="fa-solid fa-check"></i> Dipick</span>' : ''}
+      </div>
+      ${it.name   ? `<div class="item-name">${eh(it.name)}</div>` : ''}
+      ${it.lokasi ? `<div class="item-lokasi"><i class="fa-solid fa-location-dot" style="font-size:10px;margin-right:4px;color:var(--info)"></i>${eh(it.lokasi)}</div>` : ''}
+      <div class="item-meta">
+        <div class="item-qty"><i class="fa-solid fa-cubes" style="font-size:11px"></i> <span>Pick</span> <span class="item-qty-num">${it.qty}</span> <span>pcs</span></div>
+        <div class="item-time"><i class="fa-regular fa-clock" style="margin-right:3px"></i>${it.time}</div>
+        ${isTaken && it.takenAt ? `<div class="item-taken-time"><i class="fa-solid fa-circle-check" style="margin-right:3px"></i>${it.takenAt}</div>` : ''}
+      </div>
+      ${it.note ? `<div class="item-note"><i class="fa-solid fa-note-sticky" style="margin-right:5px;font-size:10px;color:var(--text-muted)"></i>${eh(it.note)}</div>` : ''}
+      <div class="edit-form" id="ef-${it.id}">
+        <div class="edit-row"><span class="edit-label">SKU</span><input class="edit-input" id="es-${it.id}" value="${ea(it.sku)}"></div>
+        <div class="edit-row"><span class="edit-label">ODO</span><input class="edit-input" id="eo-${it.id}" value="${ea(it.odo||'')}"></div>
+        <div class="edit-row"><span class="edit-label">Nama</span><input class="edit-input" id="en-${it.id}" value="${ea(it.name||'')}" placeholder="(opsional)"></div>
+        <div class="edit-row"><span class="edit-label">Lokasi</span><input class="edit-input" id="el-${it.id}" value="${ea(it.lokasi||'')}" placeholder="(opsional)"></div>
+        <div class="edit-row"><span class="edit-label">Qty</span><input type="number" class="edit-input" id="eq-${it.id}" value="${it.qty}" min="1" max="9999" style="max-width:80px"></div>
+        <div class="edit-row"><span class="edit-label">Note</span><input class="edit-input" id="eno-${it.id}" value="${ea(it.note||'')}" placeholder="(opsional)"></div>
+        <div class="edit-actions">
+          <button class="btn-cancel-edit" onclick="cancelEdit('${it.id}')"><i class="fa-solid fa-xmark"></i> Batal</button>
+          <button class="btn-save" onclick="saveEdit('${it.id}')"><i class="fa-solid fa-check"></i> Simpan</button>
+        </div>
+      </div>
+    </div>
+    <div class="item-actions">
+      <button class="icon-btn icon-btn-edit" onclick="toggleEdit('${it.id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+      <button class="icon-btn icon-btn-del"  onclick="openDel('${it.id}','${ea(it.sku)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  </div>`;
+}
+
+// ── EDIT PICK ITEM ─────────────────────────────────────────
 function toggleEdit(id) {
   const f = document.getElementById('ef-'+id), c = document.getElementById('card-'+id);
   const was = f.classList.contains('open');
@@ -585,27 +1050,241 @@ function saveEdit(id) {
   const sku = document.getElementById('es-'+id).value.trim();
   if (!sku) { showToast('SKU tidak boleh kosong', 'error', 'fa-circle-exclamation'); return; }
   const idx = items.findIndex(x => x.id === id); if (idx === -1) return;
-  items[idx].sku  = sku;
-  items[idx].name = document.getElementById('en-'+id).value.trim();
-  items[idx].qty  = parseInt(document.getElementById('eq-'+id).value) || 1;
-  items[idx].note = document.getElementById('eno-'+id).value.trim();
-  save(); renderList(); showToast('Perubahan disimpan', 'success', 'fa-circle-check');
+  items[idx].sku   = sku;
+  items[idx].odo   = document.getElementById('eo-'+id).value.trim();
+  items[idx].name  = document.getElementById('en-'+id).value.trim();
+  items[idx].lokasi= document.getElementById('el-'+id).value.trim();
+  items[idx].qty   = parseInt(document.getElementById('eq-'+id).value) || 1;
+  items[idx].note  = document.getElementById('eno-'+id).value.trim();
+  save(); renderList();
+  showToast('Perubahan disimpan', 'success', 'fa-circle-check');
 }
 
-// DELETE / RESET
+// ── DELETE / RESET PICK ────────────────────────────────────
 function openDel(id, sku) { delTarget = id; document.getElementById('deleteDesc').textContent = 'Hapus item SKU: ' + sku + '?'; openModal('deleteModal'); }
 function confirmDelete() { if (!delTarget) return; items = items.filter(x => x.id !== delTarget); save(); renderList(); closeModal('deleteModal'); showToast('Item dihapus', 'warning', 'fa-trash-can'); }
-function openResetModal() { if (!items.length) { showToast('Tidak ada data untuk dihapus', 'warning', 'fa-circle-info'); return; } openModal('resetModal'); }
-function resetAll() { items = []; save(); renderList(); closeModal('resetModal'); showToast('Semua data telah dihapus', 'warning', 'fa-trash-can'); }
+function openResetModal(e) { if (e) e.stopPropagation(); if (!items.length) { showToast('Tidak ada data untuk dihapus', 'warning', 'fa-circle-info'); return; } openModal('resetModal'); }
+function resetAll() { items = []; save(); renderList(); closeModal('resetModal'); showToast('Pick list dihapus', 'warning', 'fa-trash-can'); }
 
-// MODALS
+// ── MASTER SKU ─────────────────────────────────────────────
+let skuFilterVal = 'all';
+function setSkuFilter(f) {
+  skuFilterVal = f;
+  ['skuFAll','skuFLoc','skuFNoLoc'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById({ all:'skuFAll', loc:'skuFLoc', noloc:'skuFNoLoc' }[f]).classList.add('active');
+  renderSkuList();
+}
+
+function renderSkuList() {
+  const q    = (document.getElementById('skuSearchInput').value || '').toLowerCase();
+  let list   = masterSkus.filter(s =>
+    !q ||
+    s.sku.toLowerCase().includes(q) ||
+    (s.name   && s.name.toLowerCase().includes(q)) ||
+    (s.lokasi && s.lokasi.toLowerCase().includes(q)) ||
+    (s.odo    && s.odo.toLowerCase().includes(q))
+  );
+  if (skuFilterVal === 'loc')   list = list.filter(s => s.lokasi && s.lokasi.trim());
+  if (skuFilterVal === 'noloc') list = list.filter(s => !s.lokasi || !s.lokasi.trim());
+
+  document.getElementById('skuTotalBadge').textContent = masterSkus.length;
+  const body = document.getElementById('skuListBody');
+
+  if (!list.length) {
+    body.innerHTML = `<div class="empty-state"><i class="fa-solid fa-tags"></i>
+      <p>${masterSkus.length === 0 ? 'Belum ada master SKU.<br>Klik "+ Tambah SKU" untuk mulai.' : 'Tidak ada hasil untuk pencarian ini.'}</p></div>`;
+    return;
+  }
+
+  body.innerHTML = list.map(s => {
+    const hasBarcode = s.sku && s.sku.trim();
+    return `<div class="sku-card">
+      <div class="sku-card-body">
+        <div class="sku-card-top">
+          <div class="sku-card-sku"><i class="fa-solid fa-barcode" style="font-size:11px;margin-right:5px"></i>${eh(s.sku)}</div>
+          <div class="sku-card-actions">
+            <button class="icon-btn icon-btn-edit" onclick="editSkuModal('${ea(s.id)}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+            <button class="icon-btn icon-btn-del"  onclick="openDelSku('${ea(s.id)}','${ea(s.sku)}')" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+        ${s.name   ? `<div class="sku-card-name">${eh(s.name)}</div>` : ''}
+        <div class="sku-card-meta">
+          ${s.odo    ? `<span class="sku-meta-tag"><i class="fa-solid fa-hashtag" style="font-size:9px"></i> ODO: ${eh(s.odo)}</span>` : ''}
+          ${s.lokasi ? `<span class="sku-meta-tag lokasi"><i class="fa-solid fa-location-dot" style="font-size:9px"></i> ${eh(s.lokasi)}</span>` : ''}
+        </div>
+        ${hasBarcode ? `<div class="sku-card-barcode" onclick="openSkuDetail('${ea(s.id)}')">
+          <svg id="bc-${s.id}" class="sku-barcode-svg"></svg>
+          <div class="sku-barcode-tap">Tap untuk detail</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Render barcodes after DOM update
+  requestAnimationFrame(() => {
+    list.forEach(s => {
+      if (!s.sku || !s.sku.trim()) return;
+      const el = document.getElementById('bc-' + s.id);
+      if (!el) return;
+      try {
+        JsBarcode(el, s.sku, {
+          format: 'CODE128', lineColor: '#e8ff00', background: 'transparent',
+          width: 1.4, height: 36, displayValue: false, margin: 0
+        });
+      } catch(_) {}
+    });
+  });
+}
+
+function openSkuModal(id) {
+  editSkuId = null;
+  document.getElementById('skuFormTitle').innerHTML = '<i class="fa-solid fa-plus" style="color:var(--accent);margin-right:8px"></i>Tambah Master SKU';
+  document.getElementById('sfSku').value    = '';
+  document.getElementById('sfOdo').value    = '';
+  document.getElementById('sfName').value   = '';
+  document.getElementById('sfLokasi').value = '';
+  document.getElementById('skuBarcodeHint').style.display = '';
+  document.getElementById('skuBarcodeSvg').innerHTML = '';
+  openModal('skuFormModal');
+  setTimeout(() => document.getElementById('sfSku').focus(), 100);
+}
+
+function editSkuModal(id) {
+  const s = masterSkus.find(x => x.id === id);
+  if (!s) return;
+  editSkuId = id;
+  document.getElementById('skuFormTitle').innerHTML = '<i class="fa-solid fa-pen" style="color:var(--accent);margin-right:8px"></i>Edit Master SKU';
+  document.getElementById('sfSku').value    = s.sku    || '';
+  document.getElementById('sfOdo').value    = s.odo    || '';
+  document.getElementById('sfName').value   = s.name   || '';
+  document.getElementById('sfLokasi').value = s.lokasi || '';
+  updateSkuBarcode();
+  openModal('skuFormModal');
+}
+
+function updateSkuBarcode() {
+  const val = document.getElementById('sfSku').value.trim();
+  const hint= document.getElementById('skuBarcodeHint');
+  const svg = document.getElementById('skuBarcodeSvg');
+  if (!val) { hint.style.display = ''; svg.innerHTML = ''; return; }
+  hint.style.display = 'none';
+  try {
+    JsBarcode(svg, val, {
+      format: 'CODE128', lineColor: '#e8ff00', background: 'transparent',
+      width: 1.8, height: 50, displayValue: true, fontOptions: 'bold',
+      font: 'IBM Plex Mono', fontSize: 11, textMargin: 6,
+      lineColor: '#e8ff00'
+    });
+  } catch(_) { svg.innerHTML = ''; hint.style.display = ''; hint.textContent = 'Format tidak valid untuk barcode'; }
+}
+
+function saveMasterSku() {
+  const sku = document.getElementById('sfSku').value.trim();
+  if (!sku) { showToast('SKU number wajib diisi', 'error', 'fa-circle-exclamation'); return; }
+
+  if (editSkuId) {
+    const idx = masterSkus.findIndex(x => x.id === editSkuId);
+    if (idx === -1) return;
+    masterSkus[idx] = { ...masterSkus[idx], sku, odo: document.getElementById('sfOdo').value.trim(), name: document.getElementById('sfName').value.trim(), lokasi: document.getElementById('sfLokasi').value.trim() };
+    showToast('Master SKU diperbarui', 'success', 'fa-circle-check');
+  } else {
+    // Cek duplikat
+    if (masterSkus.some(x => x.sku === sku)) { showToast('SKU ' + sku + ' sudah ada di master', 'error', 'fa-circle-exclamation'); return; }
+    masterSkus.unshift({ id: Date.now().toString(), sku, odo: document.getElementById('sfOdo').value.trim(), name: document.getElementById('sfName').value.trim(), lokasi: document.getElementById('sfLokasi').value.trim() });
+    showToast('Master SKU berhasil ditambahkan', 'success', 'fa-circle-check');
+  }
+  saveSku(); renderSkuList(); closeModal('skuFormModal');
+}
+
+function openDelSku(id, sku) { delSkuTarget = id; document.getElementById('deleteSkuDesc').textContent = 'Hapus master SKU: ' + sku + '?'; openModal('deleteSkuModal'); }
+function confirmDeleteSku() { if (!delSkuTarget) return; masterSkus = masterSkus.filter(x => x.id !== delSkuTarget); saveSku(); renderSkuList(); closeModal('deleteSkuModal'); showToast('Master SKU dihapus', 'warning', 'fa-trash-can'); }
+function openResetSkuModal() { if (!masterSkus.length) { showToast('Tidak ada data master SKU', 'warning', 'fa-circle-info'); return; } openModal('resetSkuModal'); }
+function resetAllSku() { masterSkus = []; saveSku(); renderSkuList(); closeModal('resetSkuModal'); showToast('Semua master SKU dihapus', 'warning', 'fa-trash-can'); }
+
+function openSkuDetail(id) {
+  const s = masterSkus.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('skuDetailContent').innerHTML = `
+    <div class="sku-detail-barcode">
+      <svg id="detailBarcodeSvg" style="max-width:100%"></svg>
+    </div>
+    <div class="sku-detail-grid">
+      <div class="sku-detail-row"><span class="sku-detail-label">SKU</span><span class="sku-detail-val accent">${eh(s.sku)}</span></div>
+      ${s.odo    ? `<div class="sku-detail-row"><span class="sku-detail-label">ODO</span><span class="sku-detail-val">${eh(s.odo)}</span></div>` : ''}
+      ${s.name   ? `<div class="sku-detail-row"><span class="sku-detail-label">Nama</span><span class="sku-detail-val">${eh(s.name)}</span></div>` : ''}
+      ${s.lokasi ? `<div class="sku-detail-row"><span class="sku-detail-label">Lokasi</span><span class="sku-detail-val info">${eh(s.lokasi)}</span></div>` : ''}
+    </div>
+  `;
+  openModal('skuDetailModal');
+  requestAnimationFrame(() => {
+    try {
+      JsBarcode('#detailBarcodeSvg', s.sku, {
+        format: 'CODE128', lineColor: '#e8ff00', background: 'transparent',
+        width: 2.2, height: 70, displayValue: true, fontOptions: 'bold',
+        font: 'IBM Plex Mono', fontSize: 12, textMargin: 8
+      });
+    } catch(_) {}
+  });
+}
+
+// ── SETTINGS UI ────────────────────────────────────────────
+function loadSettingsUI() {
+  document.getElementById('settingAutoFocus').checked  = settings.autoFocus  !== false;
+  document.getElementById('settingAutoSwitch').checked = settings.autoSwitch !== false;
+  document.getElementById('settingBeep').checked       = settings.beep       !== false;
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isStandalone) {
+    document.getElementById('installRow').style.display    = 'none';
+    document.getElementById('pwaStatusRow').style.display  = '';
+  } else {
+    document.getElementById('installRow').style.display    = '';
+    document.getElementById('pwaStatusRow').style.display  = 'none';
+  }
+}
+
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(({ outcome }) => {
+      deferredPrompt = null;
+      if (outcome === 'accepted') showToast('Aplikasi berhasil diinstall!', 'success', 'fa-circle-check');
+    });
+  } else {
+    showToast('Gunakan menu browser untuk install', 'warning', 'fa-circle-info');
+  }
+}
+
+// ── EXPORT ─────────────────────────────────────────────────
+function exportData() {
+  if (!items.length) { showToast('Tidak ada data pick list untuk diekspor', 'warning', 'fa-circle-info'); return; }
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'picklist_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('Data pick list diekspor', 'success', 'fa-file-export');
+}
+function exportSkuData() {
+  if (!masterSkus.length) { showToast('Tidak ada master SKU untuk diekspor', 'warning', 'fa-circle-info'); return; }
+  const blob = new Blob([JSON.stringify(masterSkus, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'master_sku_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('Master SKU diekspor', 'success', 'fa-file-export');
+}
+
+// ── MODALS ─────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-['resetModal','deleteModal'].forEach(id => {
-  document.getElementById(id).addEventListener('click', e => { if (e.target === document.getElementById(id)) closeModal(id); });
+
+['resetModal','deleteModal','resetSkuModal','deleteSkuModal','skuFormModal','skuDetailModal'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', e => { if (e.target === el) closeModal(id); });
 });
 
-// TOAST
+// ── TOAST ──────────────────────────────────────────────────
 let tt;
 function showToast(msg, type='success', icon='fa-circle-check') {
   clearTimeout(tt);
@@ -617,73 +1296,39 @@ function showToast(msg, type='success', icon='fa-circle-check') {
   tt = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// MOBILE / LAYOUT
-function switchTab(tab) {
-  const form = document.getElementById('panelForm');
-  const list = document.getElementById('panelList');
-  const navForm = document.getElementById('navForm');
-  const navList = document.getElementById('navList');
+// ── HELPERS ────────────────────────────────────────────────
+function eh(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ea(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-  if (tab === 'form') {
-    form.style.display = 'flex';
-    list.style.display = 'none';
-    navForm.classList.add('active');
-    navList.classList.remove('active');
-    if (mode === 'hw') setTimeout(focusSku, 100);
-  } else {
-    form.style.display = 'none';
-    list.style.display = 'flex';
-    navList.classList.add('active');
-    navForm.classList.remove('active');
-  }
-}
-
-function initLayout() {
-  const isMobile = window.innerWidth <= 768;
-  const form = document.getElementById('panelForm');
-  const list = document.getElementById('panelList');
-  if (isMobile) {
-    // Default: show form, hide list
-    const listActive = list.style.display === 'flex';
-    if (!listActive) {
-      form.style.display = 'flex';
-      list.style.display = 'none';
-    }
-  } else {
-    // Desktop: both visible, driven purely by CSS grid
-    form.style.display = '';
-    list.style.display = '';
-  }
-}
-
-window.addEventListener('resize', initLayout);
-window.addEventListener('beforeunload', stopCam);
-
-// INIT
+// ── KEYBOARD ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('skuInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (document.getElementById('skuInput').value.trim()) {
         document.getElementById('hwStatus').textContent = 'Terbaca!';
+        // Auto-match master SKU on hardware scan
+        const val = document.getElementById('skuInput').value.trim();
+        const match = masterSkus.find(s => s.sku === val || s.odo === val);
+        if (match) fillFromMaster(match);
         setTimeout(() => document.getElementById('hwStatus').textContent = 'Siap scan', 1500);
-        document.getElementById('nameInput').focus();
+        document.getElementById('qtyInput').focus();
       }
     }
   });
-  document.getElementById('skuInputCam').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('nameInput').focus(); } });
-  document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('qtyInput').focus(); });
+  document.getElementById('skuInputCam').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('qtyInput').focus(); } });
   document.getElementById('qtyInput').addEventListener('keydown',  e => { if (e.key === 'Enter') document.getElementById('noteInput').focus(); });
   document.getElementById('noteInput').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem(); } });
-  load(); renderList(); focusSku(); initLayout();
+
+  load(); loadSku(); loadSettings();
+  renderList();
+  if (settings.autoFocus) focusSku();
 });
 
-// HELPERS
-function eh(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function ea(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+window.addEventListener('beforeunload', stopCam);
 </script>
 
-<!-- PWA Service Worker Registration -->
+<!-- PWA Service Worker + Install -->
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -693,12 +1338,10 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// PWA Install prompt
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  // Show install banner after 3 seconds if not standalone
   if (!window.matchMedia('(display-mode: standalone)').matches) {
     setTimeout(showInstallBanner, 3000);
   }
@@ -709,26 +1352,16 @@ function showInstallBanner() {
   const banner = document.createElement('div');
   banner.id = 'installBanner';
   banner.innerHTML = `
-    <div style="
-      position:fixed;bottom:70px;left:12px;right:12px;
-      background:#1a1a1a;border:1px solid #e8ff00;border-radius:10px;
-      padding:12px 14px;display:flex;align-items:center;gap:12px;
-      z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.5);
-      font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:#f0f0f0;
-    ">
+    <div style="position:fixed;bottom:70px;left:12px;right:12px;background:#1a1a1a;border:1px solid #e8ff00;border-radius:10px;
+      padding:12px 14px;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.5);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:#f0f0f0;">
       <img src="https://a.top4top.io/p_3716lgwwh0.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0">
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:13px">Install StockReq</div>
         <div style="font-size:11px;color:#888;margin-top:2px">Tambahkan ke layar utama</div>
       </div>
-      <button onclick="installApp()" style="
-        background:#e8ff00;color:#000;border:none;border-radius:6px;
-        padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;
-      ">Install</button>
-      <button onclick="document.getElementById('installBanner').remove()" style="
-        background:transparent;border:none;color:#555;cursor:pointer;
-        font-size:18px;padding:0 4px;line-height:1;flex-shrink:0;
-      ">&#x2715;</button>
+      <button onclick="installApp()" style="background:#e8ff00;color:#000;border:none;border-radius:6px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">Install</button>
+      <button onclick="document.getElementById('installBanner').remove()" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:18px;padding:0 4px;line-height:1;flex-shrink:0;">&#x2715;</button>
     </div>`;
   document.body.appendChild(banner);
 }
@@ -740,26 +1373,18 @@ async function installApp() {
   deferredPrompt = null;
   const banner = document.getElementById('installBanner');
   if (banner) banner.remove();
-  if (outcome === 'accepted') {
-    const t = document.getElementById('toast');
-    if (t) { t.className='toast success'; t.querySelector('i').className='fa-solid fa-circle-check'; document.getElementById('toastMsg').textContent='Aplikasi berhasil diinstall!'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-  }
+  if (outcome === 'accepted') showToast('Aplikasi berhasil diinstall!', 'success', 'fa-circle-check');
 }
 
-// iOS install hint (Safari doesn't support beforeinstallprompt)
 const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
 const isStandalone = window.navigator.standalone;
 if (isIos && !isStandalone) {
   setTimeout(() => {
     const banner = document.createElement('div');
     banner.innerHTML = `
-      <div style="
-        position:fixed;bottom:70px;left:12px;right:12px;
-        background:#1a1a1a;border:1px solid #2e2e2e;border-radius:10px;
-        padding:12px 14px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.5);
-        font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:#888;
-        display:flex;align-items:flex-start;gap:10px;
-      ">
+      <div style="position:fixed;bottom:70px;left:12px;right:12px;background:#1a1a1a;border:1px solid #2e2e2e;border-radius:10px;
+        padding:12px 14px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.5);font-family:'IBM Plex Sans',sans-serif;
+        font-size:12px;color:#888;display:flex;align-items:flex-start;gap:10px;">
         <i class="fa-solid fa-circle-info" style="color:#e8ff00;margin-top:1px;flex-shrink:0"></i>
         <span>Untuk install: tekan <strong style="color:#f0f0f0">Bagikan</strong> lalu pilih <strong style="color:#f0f0f0">Tambahkan ke Layar Utama</strong></span>
         <button onclick="this.closest('div').parentElement.remove()" style="background:transparent;border:none;color:#555;cursor:pointer;font-size:16px;padding:0;margin-left:auto;flex-shrink:0">&#x2715;</button>
